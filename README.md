@@ -126,9 +126,7 @@ npm run dev          # Start dev server on http://localhost:3000
 
 KlustrEye ships as a lightweight desktop application via [Tauri v2](https://v2.tauri.app/). Instead of bundling Chromium, Tauri uses the native OS webview (WebKit on macOS, WebView2 on Windows, WebKitGTK on Linux), resulting in a much smaller binary and lower memory usage.
 
-The Tauri wrapper spawns the Next.js server as a child process, opens a native window, and stores its SQLite database in `~/Library/Application Support/KlustrEye/` (macOS).
-
-**Prerequisites:** Node.js must be installed on the system (the app runs the Next.js server at runtime).
+The Tauri wrapper spawns the Next.js server as a child process, opens a native window, and stores its SQLite database in `~/Library/Application Support/KlustrEye/` (macOS). Node.js is bundled inside the app — no external runtime dependencies required.
 
 ```bash
 npm run tauri:dev        # Start Tauri in dev mode (launches Next.js + native window)
