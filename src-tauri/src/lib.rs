@@ -140,7 +140,11 @@ pub fn run() {
             let server_bundle = server_dir.join("server.bundle.mjs");
 
             // Use the bundled Node.js binary (fully standalone, no system Node.js needed)
-            let node_bin = server_dir.join("node-bin").join("node");
+            let node_bin = if cfg!(windows) {
+                server_dir.join("node-bin").join("node.exe")
+            } else {
+                server_dir.join("node-bin").join("node")
+            };
             let node_cmd = if node_bin.exists() {
                 node_bin.to_string_lossy().to_string()
             } else {

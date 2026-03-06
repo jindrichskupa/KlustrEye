@@ -36,38 +36,32 @@ async function downloadNodeBinary() {
   const archMap = { x64: "x64", arm64: "arm64" };
   const plat = platformMap[platform];
   const ar = archMap[arch];
+  const isWindows = platform === "win32";
 
   if (!plat || !ar) {
     console.error(`ERROR: Unsupported platform/arch: ${platform}/${arch}`);
     process.exit(1);
   }
 
-  const ext = platform === "win32" ? "zip" : "tar.gz";
-  const dirName = `node-v${NODE_VERSION}.0.0-${plat}-${ar}`;
-  const fileName = `${dirName}.${ext}`;
-  const url = `https://nodejs.org/dist/latest-v${NODE_VERSION}.x/`;
-
-  // First, get the actual latest version for this major
+  // Find the actual latest version for this major
   console.log(`  Fetching latest Node.js v${NODE_VERSION}.x listing...`);
   const listUrl = `https://nodejs.org/dist/latest-v${NODE_VERSION}.x/`;
   const listRes = await fetch(listUrl);
   const listHtml = await listRes.text();
 
-  // Extract the actual version from the directory listing
-  const versionMatch = listHtml.match(new RegExp(`node-(v${NODE_VERSION}\\.\\d+\\.\\d+)-${plat}-${ar}\\.tar\\.gz`));
+  // Windows uses .zip, others use .tar.gz
+  const ext = isWindows ? "zip" : "tar.gz";
+  const versionRegex = new RegExp(`node-(v${NODE_VERSION}\\.\\d+\\.\\d+)-${plat}-${ar}\\.${ext.replace(".", "\\.")}`);
+  const versionMatch = listHtml.match(versionRegex);
   if (!versionMatch) {
-    // Try xz format
-    const xzMatch = listHtml.match(new RegExp(`node-(v${NODE_VERSION}\\.\\d+\\.\\d+)-${plat}-${ar}\\.tar\\.xz`));
-    if (!xzMatch) {
-      console.error(`ERROR: Could not find Node.js v${NODE_VERSION}.x binary for ${plat}-${ar}`);
-      process.exit(1);
-    }
+    console.error(`ERROR: Could not find Node.js v${NODE_VERSION}.x binary for ${plat}-${ar}`);
+    process.exit(1);
   }
+
   const actualVersion = versionMatch[1];
   const actualDirName = `node-${actualVersion}-${plat}-${ar}`;
-  const actualFileName = `${actualDirName}.tar.gz`;
+  const actualFileName = `${actualDirName}.${ext}`;
   const downloadUrl = `${listUrl}${actualFileName}`;
-
   const downloadPath = join(dist, actualFileName);
 
   if (!existsSync(downloadPath)) {
@@ -82,18 +76,29 @@ async function downloadNodeBinary() {
     console.log(`  Downloaded ${actualFileName}`);
   }
 
-  // Extract just the node binary
   mkdirSync(nodeDir, { recursive: true });
   console.log(`  Extracting node binary...`);
-  execSync(`tar -xzf "${downloadPath}" -C "${nodeDir}" "${actualDirName}/bin/node"`, { stdio: "pipe" });
 
-  const nodeSrc = join(nodeDir, actualDirName, "bin", "node");
-  const nodeDst = join(nodeBinDst, "node");
-  cpSync(nodeSrc, nodeDst);
-  chmodSync(nodeDst, 0o755);
-
-  console.log(`  Bundled Node.js ${actualVersion} (${plat}-${ar})`);
-  return nodeDst;
+  if (isWindows) {
+    // Windows: extract node.exe from zip using PowerShell
+    const zipEntry = `${actualDirName}/node.exe`;
+    execSync(
+      `powershell -Command "Expand-Archive -Path '${downloadPath}' -DestinationPath '${nodeDir}' -Force"`,
+      { stdio: "pipe" }
+    );
+    const nodeSrc = join(nodeDir, actualDirName, "node.exe");
+    const nodeDst = join(nodeBinDst, "node.exe");
+    cpSync(nodeSrc, nodeDst);
+    console.log(`  Bundled Node.js ${actualVersion} (${plat}-${ar})`);
+  } else {
+    // macOS/Linux: extract node binary from tar.gz
+    execSync(`tar -xzf "${downloadPath}" -C "${nodeDir}" "${actualDirName}/bin/node"`, { stdio: "pipe" });
+    const nodeSrc = join(nodeDir, actualDirName, "bin", "node");
+    const nodeDst = join(nodeBinDst, "node");
+    cpSync(nodeSrc, nodeDst);
+    chmodSync(nodeDst, 0o755);
+    console.log(`  Bundled Node.js ${actualVersion} (${plat}-${ar})`);
+  }
 }
 
 // Clean and create staging directory
