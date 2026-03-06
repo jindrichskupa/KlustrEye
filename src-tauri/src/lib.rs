@@ -139,12 +139,20 @@ pub fn run() {
 
             let server_bundle = server_dir.join("server.bundle.mjs");
 
-            eprintln!("[tauri] Starting node server on port {}", port);
-            eprintln!("[tauri] Server dir: {}", server_dir.display());
-            eprintln!("[tauri] Server bundle: {}", server_bundle.display());
-            eprintln!("[tauri] DB URL: {}", db_url);
+            // Use the bundled Node.js binary (fully standalone, no system Node.js needed)
+            let node_bin = server_dir.join("node-bin").join("node");
+            let node_cmd = if node_bin.exists() {
+                node_bin.to_string_lossy().to_string()
+            } else {
+                // Fallback to system node for dev/testing
+                "node".to_string()
+            };
 
-            let child = Command::new("node")
+            eprintln!("[tauri] Starting server on port {}", port);
+            eprintln!("[tauri] Node binary: {}", node_cmd);
+            eprintln!("[tauri] Server dir: {}", server_dir.display());
+
+            let child = Command::new(&node_cmd)
                 .arg(&server_bundle)
                 .env("NODE_ENV", "production")
                 .env("PORT", port.to_string())

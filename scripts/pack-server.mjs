@@ -1,19 +1,100 @@
 #!/usr/bin/env node
 /**
- * Packages the Next.js standalone output + server bundle into a tarball
- * for Tauri to bundle as a single resource file.
+ * Packages the Next.js standalone output + server bundle + Node.js binary
+ * into a tarball for Tauri to bundle as a single resource file.
  *
- * The standalone directory becomes the root — Next.js expects .next/ in CWD.
- * We then overlay full copies of packages needed by server.bundle.mjs that
- * the standalone tracer may have only partially included.
+ * The resulting app is fully standalone — no system Node.js required.
  */
 import { execSync } from "child_process";
-import { mkdirSync, cpSync, existsSync, statSync } from "fs";
-import { join } from "path";
+import { mkdirSync, cpSync, existsSync, statSync, chmodSync } from "fs";
+import { join, basename } from "path";
+import { pipeline } from "stream/promises";
+import { createWriteStream } from "fs";
 
 const root = process.cwd();
 const dist = join(root, "dist-server");
 const staging = join(dist, "staging");
+
+// Detect target platform and arch (can be overridden via env for cross-compilation)
+const platform = process.env.TARGET_PLATFORM || process.platform;
+const arch = process.env.TARGET_ARCH || process.arch;
+
+// Node.js version to bundle
+const NODE_VERSION = process.versions.node.split(".")[0]; // Use same major version
+
+/**
+ * Download the Node.js binary for the target platform.
+ * Returns the path to the node executable.
+ */
+async function downloadNodeBinary() {
+  const nodeDir = join(dist, "node-download");
+  const nodeBinDst = join(staging, "node-bin");
+  mkdirSync(nodeBinDst, { recursive: true });
+
+  // Map platform/arch to Node.js download naming
+  const platformMap = { darwin: "darwin", linux: "linux", win32: "win" };
+  const archMap = { x64: "x64", arm64: "arm64" };
+  const plat = platformMap[platform];
+  const ar = archMap[arch];
+
+  if (!plat || !ar) {
+    console.error(`ERROR: Unsupported platform/arch: ${platform}/${arch}`);
+    process.exit(1);
+  }
+
+  const ext = platform === "win32" ? "zip" : "tar.gz";
+  const dirName = `node-v${NODE_VERSION}.0.0-${plat}-${ar}`;
+  const fileName = `${dirName}.${ext}`;
+  const url = `https://nodejs.org/dist/latest-v${NODE_VERSION}.x/`;
+
+  // First, get the actual latest version for this major
+  console.log(`  Fetching latest Node.js v${NODE_VERSION}.x listing...`);
+  const listUrl = `https://nodejs.org/dist/latest-v${NODE_VERSION}.x/`;
+  const listRes = await fetch(listUrl);
+  const listHtml = await listRes.text();
+
+  // Extract the actual version from the directory listing
+  const versionMatch = listHtml.match(new RegExp(`node-(v${NODE_VERSION}\\.\\d+\\.\\d+)-${plat}-${ar}\\.tar\\.gz`));
+  if (!versionMatch) {
+    // Try xz format
+    const xzMatch = listHtml.match(new RegExp(`node-(v${NODE_VERSION}\\.\\d+\\.\\d+)-${plat}-${ar}\\.tar\\.xz`));
+    if (!xzMatch) {
+      console.error(`ERROR: Could not find Node.js v${NODE_VERSION}.x binary for ${plat}-${ar}`);
+      process.exit(1);
+    }
+  }
+  const actualVersion = versionMatch[1];
+  const actualDirName = `node-${actualVersion}-${plat}-${ar}`;
+  const actualFileName = `${actualDirName}.tar.gz`;
+  const downloadUrl = `${listUrl}${actualFileName}`;
+
+  const downloadPath = join(dist, actualFileName);
+
+  if (!existsSync(downloadPath)) {
+    console.log(`  Downloading Node.js ${actualVersion} for ${plat}-${ar}...`);
+    mkdirSync(dist, { recursive: true });
+    const res = await fetch(downloadUrl);
+    if (!res.ok) {
+      console.error(`ERROR: Failed to download ${downloadUrl}: ${res.status}`);
+      process.exit(1);
+    }
+    await pipeline(res.body, createWriteStream(downloadPath));
+    console.log(`  Downloaded ${actualFileName}`);
+  }
+
+  // Extract just the node binary
+  mkdirSync(nodeDir, { recursive: true });
+  console.log(`  Extracting node binary...`);
+  execSync(`tar -xzf "${downloadPath}" -C "${nodeDir}" "${actualDirName}/bin/node"`, { stdio: "pipe" });
+
+  const nodeSrc = join(nodeDir, actualDirName, "bin", "node");
+  const nodeDst = join(nodeBinDst, "node");
+  cpSync(nodeSrc, nodeDst);
+  chmodSync(nodeDst, 0o755);
+
+  console.log(`  Bundled Node.js ${actualVersion} (${plat}-${ar})`);
+  return nodeDst;
+}
 
 // Clean and create staging directory
 execSync(`rm -rf ${dist}`);
@@ -39,7 +120,7 @@ if (existsSync(publicDir)) {
   cpSync(publicDir, join(staging, "public"), { recursive: true });
 }
 
-// Copy our custom server bundle (replaces the default standalone server.js)
+// Copy our custom server bundle
 cpSync(join(root, "server.bundle.mjs"), join(staging, "server.bundle.mjs"));
 
 // Copy prisma schema
@@ -50,9 +131,6 @@ if (existsSync(prismaSchema)) {
 }
 
 // Overlay full versions of packages that server.bundle.mjs imports directly.
-// The standalone tracer may have only partially included these (e.g., CJS only).
-// next must be overlaid because standalone strips it to a minimal server.js runner,
-// but our custom server.ts calls next() programmatically which needs the full package.
 const serverDeps = ["next", "ws", "node-pty"];
 const srcModules = join(root, "node_modules");
 const dstModules = join(staging, "node_modules");
@@ -66,12 +144,8 @@ for (const pkg of serverDeps) {
   }
 }
 
-// Also copy node-pty prebuilds (native addon)
-const ptySrc = join(srcModules, "node-pty", "prebuilds");
-if (existsSync(ptySrc)) {
-  cpSync(ptySrc, join(dstModules, "node-pty", "prebuilds"), { recursive: true });
-  console.log("  Copied node-pty prebuilds");
-}
+// Download and bundle Node.js binary
+await downloadNodeBinary();
 
 // Create tarball
 execSync(`tar -czf server-pack.tar.gz -C staging .`, { cwd: dist });
