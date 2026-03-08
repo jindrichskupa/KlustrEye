@@ -137,7 +137,7 @@ pub fn run() {
             fs::create_dir_all(&db_dir).ok();
             let db_url = format!("file:{}/klustreye.db", db_dir.display());
 
-            let server_bundle = server_dir.join("server.bundle.mjs");
+            let server_bundle = server_dir.join("server.js");
 
             // Use the bundled Node.js binary (fully standalone, no system Node.js needed)
             let node_bin = if cfg!(windows) {
