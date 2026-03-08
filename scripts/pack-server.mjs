@@ -263,9 +263,8 @@ async function cleanupAllPortForwards() {
 // ============================================================================
 // Kubernetes client (from src/lib/k8s/client.ts)
 // ============================================================================
-const k8s = require('@kubernetes/client-node');
-
-function getKubeConfig(contextName) {
+async function getKubeConfig(contextName) {
+  const k8s = await import('@kubernetes/client-node');
   const kc = new k8s.KubeConfig();
   const configPath = process.env.KUBECONFIG_PATH || process.env.KUBECONFIG;
   if (configPath) {
@@ -276,7 +275,7 @@ function getKubeConfig(contextName) {
   if (contextName) {
     kc.setCurrentContext(contextName);
   }
-  return kc;
+  return { kc, k8s };
 }
 
 // ============================================================================
@@ -292,7 +291,7 @@ function handleTerminalConnection(ws, params) {
 
   (async () => {
     try {
-      const kc = getKubeConfig(contextName);
+      const { kc, k8s } = await getKubeConfig(contextName);
       const exec = new k8s.Exec(kc);
 
       const writableStdout = new Writable({
@@ -460,9 +459,20 @@ async function handleShellConnection(ws, params) {
 // ============================================================================
 // Main server startup
 // ============================================================================
+import http from 'node:http';
+
+const { WebSocketServer } = require('ws');
+
+// Monkey-patch http.createServer to capture the server instance
+let capturedServer = null;
+const originalCreateServer = http.createServer;
+http.createServer = function(...args) {
+  capturedServer = originalCreateServer.apply(this, args);
+  return capturedServer;
+};
+
 require('next');
 const { startServer } = require('next/dist/server/lib/start-server');
-const { WebSocketServer } = require('ws');
 
 if (
   Number.isNaN(keepAliveTimeout) ||
@@ -477,8 +487,8 @@ if (
   await ensureDatabase();
   await markStaleSessionsStopped();
 
-  // Start Next.js server
-  const serverResult = await startServer({
+  // Start Next.js server (this will use our patched createServer)
+  await startServer({
     dir,
     isDev: false,
     config: nextConfig,
@@ -488,17 +498,20 @@ if (
     keepAliveTimeout,
   });
 
-  // Get the HTTP server from Next.js
-  const server = serverResult?.server;
+  // Get the captured HTTP server
+  const server = capturedServer;
   if (!server) {
-    console.error("ERROR: Could not get HTTP server from Next.js startServer");
+    console.error("ERROR: Could not capture HTTP server from Next.js");
     process.exit(1);
   }
 
   // Create WebSocket server (noServer mode - we handle upgrades ourselves)
   const wss = new WebSocketServer({ noServer: true });
 
-  // Handle WebSocket upgrade requests
+  // Prepend our WebSocket upgrade handler before Next.js handlers
+  const existingListeners = server.listeners('upgrade');
+  server.removeAllListeners('upgrade');
+
   server.on('upgrade', (req, socket, head) => {
     const { pathname } = parse(req.url, true);
 
@@ -531,8 +544,10 @@ if (
       return;
     }
 
-    // Not a WebSocket route we handle - destroy the socket
-    socket.destroy();
+    // Not our WebSocket route - pass to Next.js handlers
+    for (const listener of existingListeners) {
+      listener.call(server, req, socket, head);
+    }
   });
 
   // Graceful shutdown
