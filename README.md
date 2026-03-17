@@ -118,7 +118,7 @@ A native desktop Kubernetes IDE built with Tauri, React, and Rust. Connect to re
       │                 │
  ┌────▼──────┐   ┌──────▼──────────────────────┐
  │  WebView  │   │   Axum Backend (Rust)        │
- │ React SPA │◄──►  :3000                       │
+ │ React SPA │◄──►  :auto (47291 default)       │
  │  (Vite)   │   │   ├─ REST  /api/**           │
  └───────────┘   │   ├─ WS    /ws/terminal/*    │
                  │   ├─ WS    /ws/shell/*        │
@@ -135,41 +135,31 @@ Everything except the React UI runs as native Rust — the HTTP server, Kubernet
 
 ## Getting Started
 
-### Prerequisites
+Download the latest release for your platform from the [Releases](https://github.com/joli-sys/KlustrEye/releases) page — no installation required, just open the app.
 
+**Requirements:**
+- A valid kubeconfig file (`~/.kube/config`)
+- Helm CLI — optional, only needed for Helm features
+
+That's it. No Node.js, no Docker, no runtime to install.
+
+## Development
+
+**Prerequisites:**
 - Rust toolchain (stable)
 - Node.js 20+
-- A valid kubeconfig file (`~/.kube/config`)
-- Helm CLI installed (for Helm features)
 - Tauri prerequisites for your OS — see [Tauri docs](https://v2.tauri.app/start/prerequisites/)
-
-### Development
 
 ```bash
 npm install
-npm run tauri:dev        # Start Tauri dev mode (Vite + Axum backend + native window)
+npm run tauri:dev        # Vite + Axum backend + native window
+npm run tauri:build      # Build .app/.dmg (macOS), .AppImage (Linux), .exe/.msi (Windows)
 ```
-
-The Vite frontend runs on `:3001`, the Axum backend on `:3000`. Vite proxies `/api` and `/ws` to the backend automatically.
-
-### Production Build
-
-```bash
-npm run tauri:build      # Build .app + .dmg (macOS), .AppImage (Linux), .msi (Windows)
-```
-
-Output is at `target/release/bundle/`.
-
-Pre-built binaries for macOS (Apple Silicon & Intel), Linux, and Windows are available on the [Releases](https://github.com/joli-sys/KlustrEye/releases) page.
-
-## Scripts
 
 | Command | Description |
 |---------|-------------|
 | `npm run tauri:dev` | Start Tauri desktop app in dev mode |
 | `npm run tauri:build` | Build production Tauri desktop binary |
-| `npm run dev:frontend` | Start Vite dev server only (no backend) |
-| `npm run build:frontend` | Build Vite frontend only |
 | `npx tsc --noEmit` | Type-check frontend |
 | `cargo build -p backend` | Build Rust backend only |
 
@@ -244,7 +234,7 @@ SQLite is created automatically on first launch at:
 - **No authentication** — designed for local or trusted-network use
 - **Kubeconfig only** — cluster discovery uses kubeconfig contexts exclusively
 - **No Node.js** — the backend is pure Rust; no Node.js runtime is bundled or required
-- **Dark theme** — ships with a dark theme using CSS variables and OKLCH colors
+- **Light/dark mode** — manual toggle with system preference detection on first launch
 
 ## Links
 
