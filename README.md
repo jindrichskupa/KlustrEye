@@ -5,15 +5,15 @@
 # KlustrEye
 
 <p align="center">
-  <img src="public/Screenshot_homepage.png" alt="KlustrEye">
+  <img src="public/screenshot_homepage.png" alt="KlustrEye">
 </p>
 
 <p align="center">
-  <img src="public/Screenshot_dashboard.png" alt="KlustrEye">
+  <img src="public/screenshot_overview.png" alt="KlustrEye">
 </p>
 
 <p align="center">
-  <img src="public/Screenshot_pod.png" alt="KlustrEye">
+  <img src="public/screenshot_pod.png" alt="KlustrEye">
 </p>
 
 A native desktop Kubernetes IDE built with Tauri, React, and Rust. Connect to real clusters via kubeconfig and manage workloads, view logs, open pod terminals, manage Helm releases, and more — all from a lightweight native app.
