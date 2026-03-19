@@ -186,6 +186,7 @@ export function NamespaceSelector({ contextName }: { contextName: string }) {
                 <input
                   ref={filterInputRef}
                   type="text"
+                  autoComplete="off"
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                   placeholder="Filter namespaces..."
