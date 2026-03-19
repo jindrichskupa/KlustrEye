@@ -58,7 +58,7 @@ export async function listReleases(
   contextName: string,
   namespace?: string
 ): Promise<HelmRelease[]> {
-  const args = ["list", "--output", "json"];
+  const args = ["list", "--output", "json", "--pending"];
   if (namespace) {
     args.push("--namespace", namespace);
   } else {
