@@ -94,7 +94,7 @@ export function Sidebar({ contextName, onNavigate, forceExpanded }: { contextNam
                   className={cn(
                     "flex items-center gap-3 px-3 py-1.5 mx-1 rounded-md text-sm transition-colors",
                     isActive
-                      ? "bg-accent text-accent-foreground"
+                      ? "bg-primary/10 text-primary font-medium"
                       : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                   )}
                   title={!sidebarOpen ? item.label : undefined}
@@ -139,7 +139,7 @@ export function Sidebar({ contextName, onNavigate, forceExpanded }: { contextNam
                   className={cn(
                     "flex items-center gap-3 px-3 py-1.5 mx-1 rounded-md text-sm transition-colors",
                     isActive
-                      ? "bg-accent text-accent-foreground"
+                      ? "bg-primary/10 text-primary font-medium"
                       : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                   )}
                   title={!sidebarOpen ? plugin.manifest.name : undefined}
@@ -217,7 +217,7 @@ export function Sidebar({ contextName, onNavigate, forceExpanded }: { contextNam
           onClick={() => onNavigate?.()}
           className={cn(
             "flex items-center gap-3 px-3 py-1.5 mx-1 rounded-md text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors",
-            pathname.includes("/settings") && "bg-accent text-accent-foreground"
+            pathname.includes("/settings") && "bg-primary/10 text-primary font-medium"
           )}
         >
           <Settings className="h-4 w-4 shrink-0" />

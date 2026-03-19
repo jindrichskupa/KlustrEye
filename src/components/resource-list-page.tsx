@@ -102,7 +102,7 @@ export function ResourceListPage({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{entry.labelPlural}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh">
+          <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh" aria-label="Refresh">
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
           {onCreate && (
