@@ -7,7 +7,7 @@ use super::{ChatMessage, LlmClient, TokenStream};
 pub struct AnthropicClient {
     api_key: String,
     model: String,
-    pub http: Client,
+    http: Client,
 }
 
 impl AnthropicClient {
