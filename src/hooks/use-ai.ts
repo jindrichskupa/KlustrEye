@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAiStore, AiMessage } from "@/lib/stores/ai-store";
+import { useUIStore } from "@/lib/stores/ui-store";
 
 export interface AiStatus {
   provider: string | null;
@@ -209,4 +210,19 @@ export function useChatStream() {
   );
 
   return { sendMessage, isStreaming };
+}
+
+export function useInlineAiAction() {
+  const { setAiPanelOpen } = useUIStore();
+  const { sendMessage } = useChatStream();
+
+  const triggerAction = useCallback(
+    async (message: string, context?: AiContext) => {
+      setAiPanelOpen(true);
+      await sendMessage({ content: message, context });
+    },
+    [setAiPanelOpen, sendMessage]
+  );
+
+  return { triggerAction };
 }
