@@ -51,3 +51,4 @@ http = "1"
 rust-embed = "8"
 mime_guess = "2"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+async-stream = "0.3"

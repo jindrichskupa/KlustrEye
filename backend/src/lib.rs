@@ -2,6 +2,7 @@ pub mod db;
 pub mod error;
 pub mod k8s;
 pub mod routes;
+pub mod ai;
 pub mod ws;
 
 use axum::{
