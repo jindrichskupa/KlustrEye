@@ -60,6 +60,9 @@ export default function AiSettingsPage() {
   useEffect(() => {
     if (aiStatus?.provider) {
       setProvider(aiStatus.provider);
+      if (DEFAULT_BASE_URLS[aiStatus.provider]) {
+        setBaseUrl(DEFAULT_BASE_URLS[aiStatus.provider]);
+      }
     }
     if (aiStatus?.model) {
       setModel(aiStatus.model);
@@ -222,7 +225,8 @@ export default function AiSettingsPage() {
         }
 
         if (!found) {
-          setTestStatus("success");
+          setTestStatus("error");
+          setTestError("No response received from provider");
         }
       } finally {
         reader.cancel().catch(() => {});
