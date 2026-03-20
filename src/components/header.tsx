@@ -7,7 +7,6 @@ import { Search, Menu, Terminal, Keyboard, Sun, Moon, Sparkles } from "lucide-re
 import { KeyboardShortcutsDialog, useKeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 import { useUIStore } from "@/lib/stores/ui-store";
 import { useTheme } from "@/hooks/use-theme";
-import { cn } from "@/lib/utils";
 
 export function Header({ contextName }: { contextName: string }) {
   const { setCommandPaletteOpen, setMobileSidebarOpen, toggleShellTerminal, shellTerminalOpen, toggleAiPanel, aiPanelOpen } = useUIStore();
@@ -63,9 +62,9 @@ export function Header({ contextName }: { contextName: string }) {
           </kbd>
         </Button>
         <Button
-          variant="ghost"
+          variant={aiPanelOpen ? "secondary" : "ghost"}
           size="icon"
-          className={cn("h-8 w-8 text-muted-foreground", aiPanelOpen && "bg-accent")}
+          className="h-8 w-8 text-muted-foreground"
           onClick={toggleAiPanel}
           title="AI Assistant"
         >
