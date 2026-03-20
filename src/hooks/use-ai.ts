@@ -96,6 +96,12 @@ export function useChatStream() {
     async ({ content, context }: SendMessageOptions) => {
       if (useAiStore.getState().isStreaming) return;
 
+      // Log privacy warning for non-Ollama providers
+      if (context?.log_lines && !useAiStore.getState().logWarningShown) {
+        useAiStore.getState().setLogWarningShown();
+        useAiStore.setState((s) => ({ ...s, showLogWarning: true }));
+      }
+
       setStreaming(true);
 
       // Add user message to store

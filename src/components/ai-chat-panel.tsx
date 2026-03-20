@@ -22,13 +22,12 @@ interface AiChatPanelProps {
 
 export function AiChatPanel({ context }: AiChatPanelProps) {
   const { aiPanelOpen, setAiPanelOpen } = useUIStore();
-  const { messages, clearMessages, logWarningShown, setLogWarningShown } =
+  const { messages, clearMessages, showLogWarning, setShowLogWarning } =
     useAiStore();
   const isStreaming = useAiStore((s) => s.isStreaming);
   const { data: aiStatus } = useAiStatus();
   const { sendMessage } = useChatStream();
   const [input, setInput] = useState("");
-  const [showLogWarning, setShowLogWarning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,12 +53,6 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
-
-    // Show log warning once if context contains log_lines and provider is not ollama
-    if (context?.log_lines && !logWarningShown && aiStatus?.provider !== "ollama") {
-      setShowLogWarning(true);
-      setLogWarningShown();
-    }
 
     const content = input.trim();
     setInput("");
@@ -155,7 +148,7 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
       ) : (
         <>
           {/* Log warning banner */}
-          {showLogWarning && (
+          {showLogWarning && aiStatus?.provider !== "ollama" && (
             <div className="mx-3 mt-2 flex items-start gap-2 rounded-md bg-yellow-500/10 border border-yellow-500/30 p-2 text-xs text-yellow-700 dark:text-yellow-400">
               <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
               <span className="flex-1">

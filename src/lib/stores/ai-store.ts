@@ -11,11 +11,13 @@ interface AiStore {
   messages: AiMessage[];
   isStreaming: boolean;
   logWarningShown: boolean;
+  showLogWarning: boolean;
 
   addMessage: (msg: AiMessage) => void;
   updateLastAssistantMessage: (content: string) => void;
   setStreaming: (v: boolean) => void;
   setLogWarningShown: () => void;
+  setShowLogWarning: (v: boolean) => void;
   clearMessages: () => void;
 }
 
@@ -23,6 +25,7 @@ export const useAiStore = create<AiStore>((set) => ({
   messages: [],
   isStreaming: false,
   logWarningShown: false,
+  showLogWarning: false,
 
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
   updateLastAssistantMessage: (content) =>
@@ -34,5 +37,6 @@ export const useAiStore = create<AiStore>((set) => ({
     }),
   setStreaming: (v) => set({ isStreaming: v }),
   setLogWarningShown: () => set({ logWarningShown: true }),
+  setShowLogWarning: (v) => set({ showLogWarning: v }),
   clearMessages: () => set({ messages: [] }),
 }));
