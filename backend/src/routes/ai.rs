@@ -132,11 +132,13 @@ pub async fn save_ai_settings(
         upsert(state.db.clone(), "ai_api_key".into(), key).await?;
     }
 
-    let base_url_val = body.base_url.unwrap_or_default();
-    upsert(state.db.clone(), "ai_base_url".into(), base_url_val).await?;
+    if let Some(ref base_url) = body.base_url {
+        upsert(state.db.clone(), "ai_base_url".into(), base_url.clone()).await?;
+    }
 
-    let deployment_val = body.deployment_name.unwrap_or_default();
-    upsert(state.db.clone(), "ai_deployment_name".into(), deployment_val).await?;
+    if let Some(ref deployment_name) = body.deployment_name {
+        upsert(state.db.clone(), "ai_deployment_name".into(), deployment_name.clone()).await?;
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }
