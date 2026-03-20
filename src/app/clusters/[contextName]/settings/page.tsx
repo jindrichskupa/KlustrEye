@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { useOrganizations, useAssignClusterOrganization } from "@/hooks/use-orga
 import { useUIStore } from "@/lib/stores/ui-store";
 import { getPlugins } from "@/lib/plugins/registry";
 import { COLOR_PRESETS, DEFAULT_COLOR_SCHEME } from "@/lib/color-presets";
-import { Check } from "lucide-react";
+import { Check, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const plugins = getPlugins();
@@ -124,7 +124,16 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <h1 className="text-2xl font-bold">Settings</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <Link
+          to={`/clusters/${encodeURIComponent(ctx)}/settings/ai`}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors border rounded-md px-3 py-1.5 hover:bg-accent/50"
+        >
+          <Bot className="h-4 w-4" />
+          AI Settings
+        </Link>
+      </div>
 
       <Card>
         <CardHeader>

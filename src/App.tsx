@@ -13,6 +13,7 @@ import CrdResourceDetailPage from "@/app/clusters/[contextName]/crds/[group]/[ve
 import HelmPage from "@/app/clusters/[contextName]/helm/page";
 import HelmReleasePage from "@/app/clusters/[contextName]/helm/[name]/page";
 import SettingsPage from "@/app/clusters/[contextName]/settings/page";
+import AiSettingsPage from "@/app/clusters/[contextName]/settings/ai/page";
 import NodesPage from "@/app/clusters/[contextName]/nodes/page";
 import NodeDetailPage from "@/app/clusters/[contextName]/nodes/[name]/page";
 import PodsPage from "@/app/clusters/[contextName]/workloads/pods/page";
@@ -77,6 +78,7 @@ export default function App() {
                 <Route path="helm" element={<HelmPage />} />
                 <Route path="helm/:name" element={<HelmReleasePage />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="settings/ai" element={<AiSettingsPage />} />
                 <Route path="nodes" element={<NodesPage />} />
                 <Route path="nodes/:name" element={<NodeDetailPage />} />
                 <Route path="workloads/pods" element={<PodsPage />} />
