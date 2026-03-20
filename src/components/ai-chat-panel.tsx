@@ -159,7 +159,7 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
               <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
               <span className="flex-1">
                 Logs may contain sensitive data. They will be sent to{" "}
-                {aiStatus.provider} and processed per their privacy policy.
+                {PROVIDER_DISPLAY[aiStatus.provider ?? ''] ?? aiStatus.provider} and processed per their privacy policy.
               </span>
               <button
                 className="ml-auto shrink-0 hover:opacity-70 transition-opacity"
