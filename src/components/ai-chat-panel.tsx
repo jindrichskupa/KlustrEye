@@ -9,6 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { X, Sparkles, RotateCcw, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const PROVIDER_DISPLAY: Record<string, string> = {
+  claude: 'Claude',
+  openai: 'ChatGPT',
+  ollama: 'Ollama',
+  azure_openai: 'Azure OpenAI',
+};
+
 interface AiChatPanelProps {
   context?: AiContext;
 }
@@ -28,6 +35,21 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
   }, [messages]);
 
   if (!aiPanelOpen) return null;
+
+  // Don't flash unconfigured screen while loading
+  if (aiStatus === undefined) {
+    return (
+      <div className="flex flex-col w-80 border-l bg-card h-full shrink-0">
+        <div className="flex items-center gap-2 border-b px-3 py-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">AI Assistant</span>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-xs text-muted-foreground animate-pulse">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
@@ -50,10 +72,10 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
     }
   };
 
-  const providerLabel =
-    aiStatus?.configured && aiStatus.provider && aiStatus.model
-      ? `${aiStatus.provider} · ${aiStatus.model}`
-      : null;
+  const displayProvider = PROVIDER_DISPLAY[aiStatus?.provider ?? ''] ?? aiStatus?.provider ?? '';
+  const providerLabel = aiStatus?.configured
+    ? `${displayProvider} · ${aiStatus.model}`
+    : null;
 
   const hasContext =
     context &&
@@ -68,7 +90,7 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
           : context.resource_kind,
       ]
         .filter(Boolean)
-        .join(" / ")
+        .join(" · ")
     : null;
 
   return (
@@ -170,7 +192,7 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
                     msg.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted",
-                    msg.isError && "text-destructive"
+                    msg.isError && "bg-destructive/10 border border-destructive/30 text-destructive"
                   )}
                 >
                   {msg.content}
@@ -196,6 +218,7 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
                 onKeyDown={handleKeyDown}
                 disabled={isStreaming}
                 autoComplete="off"
+                aria-label="Chat input"
               />
               <Button
                 size="sm"
