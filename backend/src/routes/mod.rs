@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod clusters;
 pub mod grafana;
 pub mod helm;
@@ -100,6 +101,11 @@ pub fn build_router(state: AppState) -> Router {
         // Settings
         .route("/api/settings/kubeconfig",
             get(settings::get_kubeconfig).put(settings::set_kubeconfig))
+        // AI
+        .route("/api/ai/settings/status", get(ai::get_ai_status))
+        .route("/api/ai/settings",
+            put(ai::save_ai_settings).delete(ai::delete_ai_settings))
+        .route("/api/ai/chat", post(ai::post_ai_chat))
         // WebSocket: terminal & shell
         .route("/ws/terminal/:ctx/:namespace/:pod/:container", get(ws_terminal_handler))
         .route("/ws/shell/:ctx", get(ws_shell_handler))
