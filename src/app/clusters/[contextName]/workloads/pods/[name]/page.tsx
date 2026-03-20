@@ -394,7 +394,7 @@ export default function PodDetailPage() {
   const namespace = searchParams.get("ns") || "default";
 
   const [editResourcesOpen, setEditResourcesOpen] = useState(false);
-  const { data } = useResource(ctx, "pods", name, namespace);
+  const { data, isLoading } = useResource(ctx, "pods", name, namespace);
   const { data: metricsData } = usePodMetrics(ctx, namespace);
   const { triggerAction } = useInlineAiAction();
 
@@ -502,6 +502,7 @@ export default function PodDetailPage() {
         <Button
           variant="outline"
           size="sm"
+          disabled={!data || isLoading}
           onClick={() =>
             triggerAction(
               `This pod is in ${podPhase ?? "Unknown"} state. Diagnose the issue and suggest fixes based on the following events and status:`,

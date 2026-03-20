@@ -91,7 +91,6 @@ export interface SendMessageOptions {
 export function useChatStream() {
   const { addMessage, updateLastAssistantMessage, setStreaming } =
     useAiStore();
-  const isStreaming = useAiStore((s) => s.isStreaming);
 
   const sendMessage = useCallback(
     async ({ content, context }: SendMessageOptions) => {
@@ -209,7 +208,7 @@ export function useChatStream() {
     [addMessage, updateLastAssistantMessage, setStreaming]
   );
 
-  return { sendMessage, isStreaming };
+  return { sendMessage };
 }
 
 export function useInlineAiAction() {

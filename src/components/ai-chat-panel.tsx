@@ -22,8 +22,9 @@ interface AiChatPanelProps {
 
 export function AiChatPanel({ context }: AiChatPanelProps) {
   const { aiPanelOpen, setAiPanelOpen } = useUIStore();
-  const { messages, isStreaming, clearMessages, logWarningShown, setLogWarningShown } =
+  const { messages, clearMessages, logWarningShown, setLogWarningShown } =
     useAiStore();
+  const isStreaming = useAiStore((s) => s.isStreaming);
   const { data: aiStatus } = useAiStatus();
   const { sendMessage } = useChatStream();
   const [input, setInput] = useState("");
