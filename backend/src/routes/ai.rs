@@ -15,7 +15,7 @@ use crate::{
         anthropic::AnthropicClient, azure::AzureOpenAiClient, ollama::OllamaClient,
         openai::OpenAiClient, AiContext, ChatMessage, LlmClient, build_system_prompt, load_config,
     },
-    error::Result,
+    error::{AppError, Result},
     AppState,
 };
 
@@ -71,7 +71,7 @@ pub async fn get_ai_status(
 ) -> Result<Json<AiStatusResponse>> {
     let rows: Vec<(String, String)> = sqlx::query_as(
         "SELECT key, value FROM user_preferences WHERE key IN \
-         ('ai_provider','ai_model','ai_api_key')",
+         ('ai_provider','ai_model','ai_api_key','ai_base_url')",
     )
     .fetch_all(&state.db)
     .await?;
@@ -85,7 +85,16 @@ pub async fn get_ai_status(
         .map(|v| !v.is_empty())
         .unwrap_or(false);
 
-    let configured = provider.is_some() && api_key_is_set;
+    let configured = match provider.as_deref() {
+        Some("ollama") => {
+            // Ollama doesn't need an API key — just a base_url
+            map.get("ai_base_url")
+                .map(|v: &String| !v.is_empty())
+                .unwrap_or(false)
+        }
+        Some(_) => api_key_is_set,
+        None => false,
+    };
 
     Ok(Json(AiStatusResponse {
         provider,
@@ -153,28 +162,17 @@ pub async fn delete_ai_settings(
 // Handler 4: POST /api/ai/chat  (SSE streaming)
 // ---------------------------------------------------------------------------
 
-fn error_response(status: StatusCode, message: &str) -> Response {
-    Response::builder()
-        .status(status)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            serde_json::json!({ "error": message }).to_string(),
-        ))
-        .unwrap()
-}
-
 pub async fn post_ai_chat(
     State(state): State<AppState>,
     Json(body): Json<ChatRequest>,
-) -> Response {
+) -> Result<Response> {
     // 1. Load AI config
     let config = match load_config(&state.db).await {
         Some(c) => c,
         None => {
-            return error_response(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "AI provider not configured. Go to Settings > AI to set up a provider.",
-            );
+            return Err(AppError::UnprocessableEntity(
+                "AI provider not configured. Go to Settings > AI to set up a provider.".to_string(),
+            ));
         }
     };
 
@@ -256,12 +254,13 @@ pub async fn post_ai_chat(
                 }
             };
 
-            Response::builder()
+            Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, "text/event-stream")
                 .header(header::CACHE_CONTROL, "no-cache")
+                .header(header::CONNECTION, "keep-alive")
                 .body(Body::from_stream(sse_stream))
-                .unwrap()
+                .expect("valid static response"))
         }};
     }
 
@@ -274,10 +273,9 @@ pub async fn post_ai_chat(
             config.api_key,
             config.deployment_name
         )),
-        unknown => error_response(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            &format!("Unknown AI provider: {unknown}"),
-        ),
+        unknown => Err(AppError::UnprocessableEntity(format!(
+            "Unknown AI provider: {unknown}"
+        ))),
     }
 }
 
