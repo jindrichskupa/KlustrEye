@@ -72,6 +72,7 @@ export const useUIStore = create<UIState>()(
         shellTerminalHeight: 300,
         ...(persisted && typeof persisted === "object" ? persisted : {}),
       }),
+      // aiPanelOpen intentionally excluded — AI panel state resets on app restart (not persisted)
       partialize: (state) => ({
         namespaceByCluster: state.namespaceByCluster,
         resourceFilters: state.resourceFilters,

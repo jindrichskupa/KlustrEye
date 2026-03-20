@@ -6,6 +6,7 @@ export interface AiStatus {
   configured: boolean;
 }
 
+// snake_case field names match the Rust backend JSON contract directly
 export interface SaveAiSettingsPayload {
   provider: string;
   model: string;
@@ -60,7 +61,7 @@ export function useOllamaModels(baseUrl: string | null) {
     queryFn: async () => {
       if (!baseUrl) return [];
       const res = await fetch(`${baseUrl}/api/tags`);
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error(`Could not reach Ollama at ${baseUrl}`);
       const data = await res.json();
       return (data.models ?? []).map((m: { name: string }) => m.name);
     },
