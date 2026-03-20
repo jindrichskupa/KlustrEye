@@ -88,12 +88,15 @@ export interface SendMessageOptions {
 }
 
 export function useChatStream() {
-  const { addMessage, updateLastAssistantMessage, setStreaming, isStreaming } =
+  const { addMessage, updateLastAssistantMessage, setStreaming } =
     useAiStore();
+  const isStreaming = useAiStore((s) => s.isStreaming);
 
   const sendMessage = useCallback(
     async ({ content, context }: SendMessageOptions) => {
-      if (isStreaming) return;
+      if (useAiStore.getState().isStreaming) return;
+
+      setStreaming(true);
 
       // Add user message to store
       const userMsg: AiMessage = {
@@ -111,13 +114,13 @@ export function useChatStream() {
       };
       addMessage(assistantMsg);
 
-      setStreaming(true);
-
       // Read current messages via getState() to avoid stale closure
       const messages = useAiStore
         .getState()
         .messages.filter((m) => m.id !== assistantMsg.id)
         .map((m) => ({ role: m.role, content: m.content }));
+
+      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
       try {
         const res = await fetch("/api/ai/chat", {
@@ -141,7 +144,7 @@ export function useChatStream() {
         }
 
         // Read SSE stream
-        const reader = res.body!.getReader();
+        reader = res.body!.getReader();
         const decoder = new TextDecoder();
         let accumulated = "";
 
@@ -184,7 +187,7 @@ export function useChatStream() {
 
               if (frame.done) break outer;
             } catch {
-              // ignore malformed frame
+              console.warn('useChatStream: malformed SSE frame', data);
             }
           }
         }
@@ -198,10 +201,11 @@ export function useChatStream() {
           return { messages: msgs };
         });
       } finally {
+        reader?.cancel().catch(() => {});
         setStreaming(false);
       }
     },
-    [isStreaming, addMessage, updateLastAssistantMessage, setStreaming]
+    [addMessage, updateLastAssistantMessage, setStreaming]
   );
 
   return { sendMessage, isStreaming };
