@@ -89,10 +89,11 @@ pub fn build_system_prompt(context: &AiContext) -> String {
 }
 
 pub fn truncate(s: &str, max_chars: usize, yaml: bool) -> String {
-    if s.len() <= max_chars {
+    // Use char count, not byte count, to avoid panics on multibyte characters
+    if s.chars().count() <= max_chars {
         return s.to_string();
     }
-    let truncated = &s[..max_chars];
+    let truncated: String = s.chars().take(max_chars).collect();
     if yaml {
         format!("{}\n# [truncated]", truncated)
     } else {
@@ -159,5 +160,14 @@ mod tests {
         assert!(prompt.contains("prod"));
         assert!(prompt.contains("default"));
         assert!(prompt.contains("Deployment/nginx"));
+    }
+
+    #[test]
+    fn truncate_multibyte_chars_no_panic() {
+        // Emoji are 4 bytes each; slicing mid-emoji would panic with byte indexing
+        let emoji_str = "😀".repeat(2000);
+        let result = truncate(&emoji_str, 100, false);
+        assert!(result.ends_with("\n[truncated]"));
+        // Should not panic
     }
 }
