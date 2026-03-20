@@ -1,16 +1,16 @@
 
-
 import { NamespaceSelector } from "@/components/namespace-selector";
 import { PortForwardIndicator } from "@/components/port-forward-indicator";
 import { useClusters } from "@/hooks/use-clusters";
 import { Button } from "@/components/ui/button";
-import { Search, Menu, Terminal, Keyboard, Sun, Moon } from "lucide-react";
+import { Search, Menu, Terminal, Keyboard, Sun, Moon, Sparkles } from "lucide-react";
 import { KeyboardShortcutsDialog, useKeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 import { useUIStore } from "@/lib/stores/ui-store";
 import { useTheme } from "@/hooks/use-theme";
+import { cn } from "@/lib/utils";
 
 export function Header({ contextName }: { contextName: string }) {
-  const { setCommandPaletteOpen, setMobileSidebarOpen, toggleShellTerminal, shellTerminalOpen } = useUIStore();
+  const { setCommandPaletteOpen, setMobileSidebarOpen, toggleShellTerminal, shellTerminalOpen, toggleAiPanel, aiPanelOpen } = useUIStore();
   const { open: shortcutsOpen, setOpen: setShortcutsOpen } = useKeyboardShortcutsDialog();
   const { data: clusters } = useClusters();
   const { theme, toggle: toggleTheme } = useTheme();
@@ -61,6 +61,15 @@ export function Header({ contextName }: { contextName: string }) {
           <kbd className="ml-2 pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
             <span className="text-xs">⌘</span>K
           </kbd>
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("h-8 w-8 text-muted-foreground", aiPanelOpen && "bg-accent")}
+          onClick={toggleAiPanel}
+          title="AI Assistant"
+        >
+          <Sparkles className="h-4 w-4" />
         </Button>
         <Button
           variant="outline"

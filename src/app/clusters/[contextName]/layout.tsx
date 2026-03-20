@@ -5,10 +5,19 @@ import { TabBar } from "@/components/tab-bar";
 import { ClusterColorProvider } from "@/components/cluster-color-provider";
 import { MobileSidebarDrawer } from "@/components/mobile-sidebar-drawer";
 import { ClusterShellTerminal } from "@/components/cluster-shell-terminal";
+import { AiChatPanel } from "@/components/ai-chat-panel";
+import { useUIStore } from "@/lib/stores/ui-store";
 
 export default function ClusterLayout() {
   const { contextName = "" } = useParams();
   const decodedContext = decodeURIComponent(contextName);
+  const { namespaceByCluster } = useUIStore();
+  const namespace = namespaceByCluster[decodedContext];
+
+  const aiContext = {
+    cluster: decodedContext,
+    namespace: namespace || undefined,
+  };
 
   return (
     <ClusterColorProvider contextName={decodedContext}>
@@ -25,6 +34,7 @@ export default function ClusterLayout() {
           </main>
           <ClusterShellTerminal contextName={decodedContext} />
         </div>
+        <AiChatPanel context={aiContext} />
       </div>
     </ClusterColorProvider>
   );
