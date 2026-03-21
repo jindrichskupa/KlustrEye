@@ -6,7 +6,7 @@ import { useAiStatus, useChatStream } from "@/hooks/use-ai";
 import type { AiContext } from "@/hooks/use-ai";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, Sparkles, RotateCcw, AlertTriangle } from "lucide-react";
+import { X, Sparkles, RotateCcw, AlertTriangle, History, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PROVIDER_DISPLAY: Record<string, string> = {
@@ -22,16 +22,26 @@ interface AiChatPanelProps {
 
 export function AiChatPanel({ context }: AiChatPanelProps) {
   const { aiPanelOpen, setAiPanelOpen } = useUIStore();
-  const { messages, clearMessages, showLogWarning, setShowLogWarning } =
-    useAiStore();
+  const {
+    messages,
+    clearMessages,
+    showLogWarning,
+    setShowLogWarning,
+    stopStreaming,
+    pastConversations,
+    loadConversation,
+    deleteConversation,
+  } = useAiStore();
   const isStreaming = useAiStore((s) => s.isStreaming);
   const { data: aiStatus } = useAiStatus();
   const { sendMessage } = useChatStream();
   const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   if (!aiPanelOpen) return null;
@@ -77,7 +87,7 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
 
   const contextLabel = hasContext
     ? [
-        context.cluster,
+        context.cluster_display_name || context.cluster,
         context.namespace,
         context.resource_kind && context.resource_name
           ? `${context.resource_kind}/${context.resource_name}`
@@ -102,6 +112,15 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
             Not configured
           </Badge>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 shrink-0"
+          onClick={() => setShowHistory((v) => !v)}
+          title="Conversation history"
+        >
+          <History className="h-3 w-3" />
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -145,6 +164,31 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
             Go to AI Settings
           </Link>
         </div>
+      ) : showHistory ? (
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          <p className="text-xs text-muted-foreground px-2 py-1 font-medium uppercase tracking-wide">Past Conversations</p>
+          {pastConversations.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">No past conversations</p>
+          ) : (
+            pastConversations.map((conv) => (
+              <div key={conv.id} className="group flex items-center gap-1 rounded-md hover:bg-accent/50 transition-colors">
+                <button
+                  className="flex-1 text-left px-3 py-2 text-sm truncate"
+                  onClick={() => { loadConversation(conv.id); setShowHistory(false); }}
+                >
+                  {conv.title}
+                </button>
+                <button
+                  className="opacity-0 group-hover:opacity-100 p-1 mr-1 rounded hover:bg-accent transition-opacity"
+                  onClick={() => deleteConversation(conv.id)}
+                  title="Delete"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       ) : (
         <>
           {/* Log warning banner */}
@@ -166,7 +210,7 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3">
             {messages.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-8">
                 Ask anything about Kubernetes
@@ -198,7 +242,6 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
                 </div>
               </div>
             ))}
-            <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
@@ -214,14 +257,27 @@ export function AiChatPanel({ context }: AiChatPanelProps) {
                 autoComplete="off"
                 aria-label="Chat input"
               />
-              <Button
-                size="sm"
-                className="self-end"
-                onClick={handleSend}
-                disabled={!input.trim() || isStreaming}
-              >
-                Send
-              </Button>
+              {isStreaming ? (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="self-end"
+                  onClick={() => stopStreaming?.()}
+                  title="Stop generating"
+                >
+                  <Square className="h-3.5 w-3.5 mr-1" />
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="self-end"
+                  onClick={handleSend}
+                  disabled={!input.trim()}
+                >
+                  Send
+                </Button>
+              )}
             </div>
           </div>
         </>

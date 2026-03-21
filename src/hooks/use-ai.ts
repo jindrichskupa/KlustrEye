@@ -75,6 +75,7 @@ export function useOllamaModels(baseUrl: string | null) {
 
 export interface AiContext {
   cluster?: string;
+  cluster_display_name?: string;
   namespace?: string;
   resource_kind?: string;
   resource_name?: string;
@@ -95,6 +96,10 @@ export function useChatStream() {
   const sendMessage = useCallback(
     async ({ content, context }: SendMessageOptions) => {
       if (useAiStore.getState().isStreaming) return;
+
+      const { setStopStreaming } = useAiStore.getState();
+      const ac = new AbortController();
+      setStopStreaming(() => ac.abort());
 
       // Log privacy warning for non-Ollama providers
       if (context?.log_lines && !useAiStore.getState().logWarningShown) {
@@ -133,6 +138,7 @@ export function useChatStream() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages, context }),
+          signal: ac.signal,
         });
 
         if (!res.ok) {
@@ -198,17 +204,20 @@ export function useChatStream() {
           }
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Network error";
-        updateLastAssistantMessage(msg);
-        useAiStore.setState((s) => {
-          const msgs = [...s.messages];
-          const last = msgs.findLastIndex((m) => m.role === "assistant");
-          if (last !== -1) msgs[last] = { ...msgs[last], isError: true };
-          return { messages: msgs };
-        });
+        if (!(err instanceof Error && err.name === 'AbortError')) {
+          const msg = err instanceof Error ? err.message : "Network error";
+          updateLastAssistantMessage(msg);
+          useAiStore.setState((s) => {
+            const msgs = [...s.messages];
+            const last = msgs.findLastIndex((m) => m.role === "assistant");
+            if (last !== -1) msgs[last] = { ...msgs[last], isError: true };
+            return { messages: msgs };
+          });
+        }
       } finally {
         reader?.cancel().catch(() => {});
         setStreaming(false);
+        useAiStore.getState().setStopStreaming(null);
       }
     },
     [addMessage, updateLastAssistantMessage, setStreaming]
