@@ -49,6 +49,15 @@ A native desktop Kubernetes IDE built with Tauri, React, and Rust. Connect to re
 - **Manifest viewer** — full rendered manifest in a read-only Monaco YAML editor
 - **History** — revision history table with status badges and one-click rollback
 
+### AI Assistant
+- **AI Chat Panel** — collapsible right-side drawer with SSE token-by-token streaming, stop button to abort generation mid-stream, and conversation history (auto-saved, loadable)
+- **4 LLM Providers** — Anthropic Claude, OpenAI (ChatGPT), Ollama (local/offline, no API key), Azure OpenAI; Rust backend proxy keeps API keys server-side
+- **AI Settings** — provider selector, write-only API key, model input with dynamic Ollama dropdown, Test Connection, and Remove Settings at `/settings/ai`
+- **Generate with AI** — describe a resource in plain text; AI streams YAML into the Create Resource dialog; one click inserts it into the editor
+- **Inline AI Actions** — "Explain This" on any resource detail page (suppressed for Secrets/ConfigMaps), "Diagnose" on Pod detail (sends phase + events), "Analyze Logs" in LogViewer (sends filtered tail, capped at 4 k chars), "Analyze Events" in the Events tab
+- **Token safety** — log lines, YAML, and events are hard-truncated server-side (logs/YAML: 4,000 chars; events: 2,000 chars) before forwarding to the provider
+- **Privacy warnings** — one-time banner when log lines are sent to a non-Ollama provider; never shown for local Ollama
+
 ### Monitoring & Debugging
 - **Pod logs** — real-time streaming via the Kubernetes Log API with search and filtering
 - **Pod terminal** — interactive terminal sessions via xterm.js and WebSocket
