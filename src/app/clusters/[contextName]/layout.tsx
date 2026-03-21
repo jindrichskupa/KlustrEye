@@ -24,7 +24,7 @@ export default function ClusterLayout() {
 
   return (
     <ClusterColorProvider contextName={decodedContext}>
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex h-full overflow-hidden">
         <div className="hidden md:flex">
           <Sidebar contextName={decodedContext} />
         </div>
