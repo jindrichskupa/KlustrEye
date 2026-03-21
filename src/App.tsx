@@ -64,8 +64,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Providers>
-        <div className="flex flex-col min-h-screen">
-          <div className="flex-1">
+        <div className="flex flex-col h-screen overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-auto">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/clusters/:contextName" element={<ClusterLayout />}>
