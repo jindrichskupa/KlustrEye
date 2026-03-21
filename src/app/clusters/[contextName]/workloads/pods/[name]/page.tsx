@@ -15,8 +15,9 @@ import { PortForwardTab } from "@/components/port-forward-tab";
 import { parseCpuValue, parseMemoryValue, formatBytes, formatCpu } from "@/lib/utils";
 import { getPluginsWithResourceExtension } from "@/lib/plugins/registry";
 import { EditResourcesDialog } from "@/components/edit-resources-dialog";
-import { Eye, EyeOff, Cpu } from "lucide-react";
+import { Eye, EyeOff, Cpu, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useInlineAiAction } from "@/hooks/use-ai";
 
 const podPlugins = getPluginsWithResourceExtension("pods");
 
@@ -393,8 +394,21 @@ export default function PodDetailPage() {
   const namespace = searchParams.get("ns") || "default";
 
   const [editResourcesOpen, setEditResourcesOpen] = useState(false);
-  const { data } = useResource(ctx, "pods", name, namespace);
+  const { data, isLoading } = useResource(ctx, "pods", name, namespace);
   const { data: metricsData } = usePodMetrics(ctx, namespace);
+  const { triggerAction } = useInlineAiAction();
+
+  const { data: podEventsData } = useQuery({
+    queryKey: ["related-events", ctx, "pods", name, namespace],
+    queryFn: async () => {
+      const params = new URLSearchParams({ namespace, "involvedObject.kind": "Pod", "involvedObject.name": name });
+      const res = await fetch(`/api/clusters/${encodeURIComponent(ctx)}/events?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch events");
+      const json = await res.json();
+      return (json.items || []) as Record<string, unknown>[];
+    },
+    staleTime: 10000,
+  });
 
   const spec = (data?.spec as Record<string, unknown>) || {};
   const status = (data?.status as Record<string, unknown>) || {};
@@ -473,12 +487,40 @@ export default function PodDetailPage() {
     return map;
   }, [metricsData, name, namespace]);
 
+  const podPhase = status.phase as string | undefined;
+  const eventsText = (podEventsData ?? [])
+    .map((e) => `[${e.type}] ${e.reason}: ${e.message}`)
+    .join("\n");
+
   return (
     <ResourceDetail
       contextName={ctx}
       kind="pods"
       name={name}
       namespace={namespace}
+      headerActions={
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!data || isLoading}
+          onClick={() =>
+            triggerAction(
+              `This pod is in ${podPhase ?? "Unknown"} state. Diagnose the issue and suggest fixes based on the following events and status:`,
+              {
+                cluster: ctx,
+                namespace,
+                resource_kind: "Pod",
+                resource_name: name,
+                events: eventsText || "No events found.",
+              }
+            )
+          }
+          className="gap-1.5"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Diagnose
+        </Button>
+      }
       extraTabs={[
         {
           value: "metrics",

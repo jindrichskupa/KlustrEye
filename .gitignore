@@ -1,3 +1,6 @@
+# git worktrees
+.worktrees/
+
 # dependencies
 /node_modules
 /.pnp
@@ -56,3 +59,4 @@ prisma/prisma/dev.db-journal
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+docs/superpowers/

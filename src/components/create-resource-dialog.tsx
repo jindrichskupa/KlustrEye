@@ -1,14 +1,16 @@
 
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { YamlEditor } from "@/components/yaml-editor";
 import { useCreateResource } from "@/hooks/use-resources";
 import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { ResourceKind } from "@/lib/constants";
 import { RESOURCE_REGISTRY } from "@/lib/constants";
 import { parse } from "yaml";
+import { Sparkles, Loader2 } from "lucide-react";
 
 const DEFAULT_TEMPLATES: Partial<Record<ResourceKind, string>> = {
   pods: `apiVersion: v1
@@ -183,9 +185,129 @@ export function CreateResourceDialog({
   namespace,
 }: CreateResourceDialogProps) {
   const entry = RESOURCE_REGISTRY[kind];
-  const [yaml, setYaml] = useState(DEFAULT_TEMPLATES[kind] || `apiVersion: ${entry.apiVersion}\nkind: ${entry.kind}\nmetadata:\n  name: my-resource\n  namespace: ${namespace || "default"}`);
+  const defaultYaml = DEFAULT_TEMPLATES[kind] || `apiVersion: ${entry.apiVersion}\nkind: ${entry.kind}\nmetadata:\n  name: my-resource\n  namespace: ${namespace || "default"}`;
+  const [yaml, setYaml] = useState(defaultYaml);
   const createMutation = useCreateResource(contextName, kind);
   const { addToast } = useToast();
+  const confirm = useConfirm();
+
+  // Generate with AI state
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generatePrompt, setGeneratePrompt] = useState('');
+  const [generateOutput, setGenerateOutput] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [extractedYaml, setExtractedYaml] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  function extractYamlBlock(text: string): string | null {
+    const match = text.match(/```(?:yaml|yml)?\r?\n([\s\S]*?)```/i);
+    return match ? match[1].trim() : null;
+  }
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setGenerateOpen(false);
+      setGeneratePrompt('');
+      setGenerateOutput('');
+      setGenerating(false);
+      setExtractedYaml(null);
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    }
+    onOpenChange(open);
+  };
+
+  async function handleGenerate() {
+    if (!generatePrompt.trim() || generating) return;
+
+    // Cancel any previous in-flight request
+    abortControllerRef.current?.abort();
+    const ac = new AbortController();
+    abortControllerRef.current = ac;
+
+    setGenerating(true);
+    setGenerateOutput('');
+    setExtractedYaml(null);
+
+    const systemPrompt = `Generate a Kubernetes ${entry.kind ?? entry.label} YAML manifest for: ${generatePrompt}`;
+
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: systemPrompt }],
+          context: {},
+        }),
+        signal: ac.signal,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        setGenerateOutput(`Error: ${err.error ?? 'Request failed'}`);
+        return;
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      try {
+        outer: while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = decoder.decode(value, { stream: true });
+          for (const line of text.split('\n')) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6).trim();
+            if (!data) continue;
+            try {
+              const frame = JSON.parse(data);
+              if (frame.error) {
+                setGenerateOutput(prev => prev + `\nError: ${frame.error}`);
+                break outer;
+              }
+              if (frame.delta) {
+                accumulated += frame.delta;
+                setGenerateOutput(accumulated);
+                const extractedBlock = extractYamlBlock(accumulated);
+                if (extractedBlock) setExtractedYaml(extractedBlock);
+              }
+              if (frame.done) break outer;
+            } catch {
+              // ignore malformed frame
+            }
+          }
+        }
+      } finally {
+        reader.cancel().catch(() => {});
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      const msg = err instanceof Error ? err.message : 'Network error';
+      setGenerateOutput(`Error: ${msg}`);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleUseYaml() {
+    if (!extractedYaml) return;
+    const hasCustomContent = yaml.trim() !== '' && yaml !== defaultYaml;
+    if (hasCustomContent) {
+      const ok = await confirm({
+        title: 'Replace YAML?',
+        description: 'Replace the current YAML with the AI-generated content?',
+        confirmLabel: 'Replace',
+      });
+      if (!ok) return;
+    }
+    setYaml(extractedYaml);
+    setGenerateOpen(false);
+    setGenerateOutput('');
+    setExtractedYaml(null);
+    setGeneratePrompt('');
+  }
 
   const handleCreate = async () => {
     try {
@@ -200,16 +322,74 @@ export function CreateResourceDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl" onClose={() => onOpenChange(false)}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-3xl" onClose={() => handleOpenChange(false)}>
         <DialogHeader>
           <DialogTitle>Create {entry.label}</DialogTitle>
         </DialogHeader>
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={() => setGenerateOpen(v => !v)}
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+            Generate with AI
+          </Button>
+        </div>
+        {generateOpen && (
+          <div className="space-y-2 border rounded-md p-3 bg-muted/30">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 text-sm border rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder={`Describe the ${entry.label} you want to create...`}
+                value={generatePrompt}
+                onChange={e => setGeneratePrompt(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleGenerate(); }}
+                disabled={generating}
+                autoComplete="off"
+              />
+              <Button
+                size="sm"
+                type="button"
+                onClick={handleGenerate}
+                disabled={!generatePrompt.trim() || generating}
+              >
+                {generating ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Generating...</>
+                ) : 'Generate'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={() => { setGenerateOpen(false); setGenerateOutput(''); setExtractedYaml(null); setGeneratePrompt(''); }}
+              >
+                Cancel
+              </Button>
+            </div>
+            {generateOutput && (
+              <div className="space-y-2">
+                <textarea
+                  className="w-full min-h-[120px] text-xs font-mono border rounded-md p-2 bg-background resize-y"
+                  value={generateOutput}
+                  readOnly
+                />
+                {extractedYaml && (
+                  <Button size="sm" type="button" onClick={handleUseYaml}>
+                    Use this YAML
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         <div className="border rounded-md overflow-hidden">
           <YamlEditor value={yaml} onChange={setYaml} height="400px" />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleCreate} disabled={createMutation.isPending}>

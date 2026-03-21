@@ -237,10 +237,10 @@ export default function OverviewPage() {
   }, [metricsData, nodes]);
 
   const stats = [
-    { label: "Nodes", value: (nodes || []).length, icon: Server, color: "text-blue-400" },
-    { label: "Pods", value: `${runningPods}/${totalPods}`, icon: Box, color: "text-green-400" },
-    { label: "Deployments", value: `${readyDeploys}/${(deployments || []).length}`, icon: Layers, color: "text-purple-400" },
-    { label: "Services", value: (services || []).length, icon: Network, color: "text-orange-400" },
+    { label: "Nodes", value: (nodes || []).length, icon: Server, color: "text-blue-400", href: `/clusters/${encodeURIComponent(ctx)}/nodes` },
+    { label: "Pods", value: `${runningPods}/${totalPods}`, icon: Box, color: "text-green-400", href: `/clusters/${encodeURIComponent(ctx)}/workloads/pods` },
+    { label: "Deployments", value: `${readyDeploys}/${(deployments || []).length}`, icon: Layers, color: "text-purple-400", href: `/clusters/${encodeURIComponent(ctx)}/workloads/deployments` },
+    { label: "Services", value: (services || []).length, icon: Network, color: "text-orange-400", href: `/clusters/${encodeURIComponent(ctx)}/network/services` },
   ];
 
   return (
@@ -268,17 +268,19 @@ export default function OverviewPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.label}
-              </CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
+          <Link key={stat.label} to={stat.href}>
+            <Card className="hover:border-primary/40 transition-colors cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {stat.label}
+                </CardTitle>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold tabular-nums">{stat.value}</div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 

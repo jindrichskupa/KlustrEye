@@ -16,6 +16,8 @@ pub enum AppError {
     Kubernetes(String),
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("{0}")]
+    UnprocessableEntity(String),
 }
 
 impl From<anyhow::Error> for AppError {
@@ -44,6 +46,7 @@ impl IntoResponse for AppError {
             AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
             AppError::Kubernetes(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
             AppError::Database(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+            AppError::UnprocessableEntity(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
         };
         (status, Json(json!({ "error": message }))).into_response()
     }

@@ -14,11 +14,12 @@ import type { ResourceKind } from "@/lib/constants";
 import { RESOURCE_REGISTRY } from "@/lib/constants";
 import { stringify, parse } from "yaml";
 import { RelatedEvents } from "@/components/related-events";
-import { Save, Trash2, ArrowLeft } from "lucide-react";
+import { Save, Trash2, ArrowLeft, Sparkles } from "lucide-react";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { Link } from "react-router-dom";
 import { RESOURCE_ROUTE_MAP } from "@/lib/constants";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useInlineAiAction } from "@/hooks/use-ai";
 
 interface ResourceDetailProps {
   contextName: string;
@@ -44,6 +45,7 @@ export function ResourceDetail({
   const deleteMutation = useDeleteResource(contextName, kind);
   const { addToast } = useToast();
   const confirm = useConfirm();
+  const { triggerAction } = useInlineAiAction();
   const navigate = useNavigate();
   const currentPathname = useLocation().pathname;
   const [currentSearchParams] = useSearchParams();
@@ -61,6 +63,9 @@ export function ResourceDetail({
   const [tab, setTab] = useState(initialTab);
   const [editedYaml, setEditedYaml] = useState<string | null>(null);
   const entry = RESOURCE_REGISTRY[kind];
+
+  const EXPLAIN_EXCLUDED_KINDS: ResourceKind[] = ["configmaps", "secrets"];
+  const showExplainButton = !EXPLAIN_EXCLUDED_KINDS.includes(kind);
 
   const yamlContent = data ? stringify(data, { lineWidth: 0 }) : "";
 
@@ -122,6 +127,28 @@ export function ResourceDetail({
         </div>
         <div className="flex items-center gap-2">
           {headerActions}
+          {showExplainButton && data && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                triggerAction(
+                  `Explain what this ${entry.kind} named ${name} does and highlight any notable configuration.`,
+                  {
+                    cluster: contextName,
+                    namespace,
+                    resource_kind: entry.kind,
+                    resource_name: name,
+                    resource_yaml: yamlContent,
+                  }
+                )
+              }
+              className="gap-1.5"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Explain This
+            </Button>
+          )}
           {tab === "yaml" && editedYaml !== null && (
             <Button size="sm" onClick={handleSave} className="gap-2" disabled={updateMutation.isPending}>
               <Save className="h-4 w-4" />

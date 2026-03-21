@@ -1,5 +1,4 @@
 
-
 import { useState, useRef, useEffect } from "react";
 import { usePodLogs } from "@/hooks/use-pod-logs";
 import { Button } from "@/components/ui/button";
@@ -7,22 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, RefreshCw, Search, ArrowDown } from "lucide-react";
+import { Download, RefreshCw, Search, ArrowDown, Sparkles } from "lucide-react";
+import { useInlineAiAction } from "@/hooks/use-ai";
 
 interface LogViewerProps {
   contextName: string;
   namespace: string;
   podName: string;
   containers: string[];
+  resourceKind?: string;
+  resourceName?: string;
 }
 
-export function LogViewer({ contextName, namespace, podName, containers }: LogViewerProps) {
+export function LogViewer({ contextName, namespace, podName, containers, resourceKind, resourceName }: LogViewerProps) {
   const [container, setContainer] = useState(containers[0] || "");
   const [follow, setFollow] = useState(false);
   const [tailLines, setTailLines] = useState(200);
   const [search, setSearch] = useState("");
   const [previous, setPrevious] = useState(false);
   const logRef = useRef<HTMLPreElement>(null);
+  const { triggerAction } = useInlineAiAction();
 
   const { logs, isLoading, error, refetch } = usePodLogs({
     contextName,
@@ -106,6 +109,26 @@ export function LogViewer({ contextName, namespace, podName, containers }: LogVi
         </Button>
         <Button variant="outline" size="icon" onClick={handleDownload}>
           <Download className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            triggerAction(
+              "Analyze these logs and identify errors, warnings, or anomalies:",
+              {
+                cluster: contextName,
+                namespace,
+                resource_kind: resourceKind ?? "Pod",
+                resource_name: resourceName ?? podName,
+                log_lines: filteredLines.join("\n"),
+              }
+            )
+          }
+          className="gap-1.5"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Analyze Logs
         </Button>
       </div>
 
